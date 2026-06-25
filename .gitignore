@@ -1,1 +1,28 @@
-.idea
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+.env
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+*.pid
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+*.db
+*.sqlite3

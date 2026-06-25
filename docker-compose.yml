@@ -1,0 +1,101 @@
+services:
+  # Бэкенд
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: search-backend
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      - APP_HOST=${APP_HOST:-0.0.0.0}
+      - APP_PORT=${APP_PORT:-8000}
+      - DEBUG=${DEBUG:-True}
+      - ELASTICSEARCH_HOST=${ELASTICSEARCH_HOST:-elasticsearch}
+      - ELASTICSEARCH_PORT=${ELASTICSEARCH_PORT:-9200}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-search_db}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_DB=${REDIS_DB:-0}
+      - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-20}
+      - CHUNK_SIZE=${CHUNK_SIZE:-1000}
+      - CHUNK_OVERLAP=${CHUNK_OVERLAP:-100}
+      - CACHE_TTL_SECONDS=${CACHE_TTL_SECONDS:-300}
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - postgres
+      - elasticsearch
+      - redis
+    networks:
+      - search-network
+
+  #  PostgreSQL
+  postgres:
+    image: postgres:15
+    container_name: search-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-search_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - search-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  #  Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.2  # ← ПРАВИЛЬНЫЙ ТЕГ
+    container_name: search-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - search-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  #  Redis
+  redis:
+    image: redis:7-alpine
+    container_name: search-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - search-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  elasticsearch_data:
+  redis_data:
+
+networks:
+  search-network:
+    driver: bridge
