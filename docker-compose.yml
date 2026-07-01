@@ -90,11 +90,37 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  
+  prometheus:
+    image: prom/prometheus
+    container_name: search-prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - search-network
+    depends_on:
+      backend:
+        condition: service_started
+  
+  grafana:
+    image: grafana/grafana
+    container_name: search-grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - search-network
 
 volumes:
   postgres_data:
   elasticsearch_data:
   redis_data:
+  grafana_data:
 
 networks:
   search-network:
