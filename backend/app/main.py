@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.api.v1.router import router
 from app.config import settings
@@ -12,13 +13,11 @@ from app.redis_client import RedisCache
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Запуск приложения...")
-
     try:
         await init_db()
         print("PostgreSQL готов к работе")
-    except Exception as e:
-        print(f"Ошибка PostgreSQL: {e}")
+    except Exception:
+        traceback.print_exc()
 
     try:
         es_client = get_elasticsearch_client()
@@ -54,6 +53,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+Instrumentator().instrument(app).expose(app)
 app.include_router(router)
 
 
