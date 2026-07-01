@@ -1,5 +1,4 @@
 services:
-  # Бэкенд
   backend:
     build:
       context: ./backend
@@ -28,13 +27,15 @@ services:
     volumes:
       - ./backend:/app
     depends_on:
-      - postgres
-      - elasticsearch
-      - redis
+      postgres:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - search-network
 
-  #  PostgreSQL
   postgres:
     image: postgres:15
     container_name: search-postgres
@@ -54,9 +55,8 @@ services:
       timeout: 5s
       retries: 5
 
-  #  Elasticsearch
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.2  # ← ПРАВИЛЬНЫЙ ТЕГ
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.2
     container_name: search-elasticsearch
     environment:
       - discovery.type=single-node
@@ -69,13 +69,13 @@ services:
       - elasticsearch_data:/usr/share/elasticsearch/data
     networks:
       - search-network
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
       interval: 30s
       timeout: 10s
       retries: 5
 
-  #  Redis
   redis:
     image: redis:7-alpine
     container_name: search-redis
