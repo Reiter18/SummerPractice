@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     chunk_overlap: int = 100
     cache_ttl_seconds: int = 300
 
+    # JWT
+    jwt_secret_key: str = "your-super-secret-key-change-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 1440
+
     @property
     def elasticsearch_url(self) -> str:
         return f"http://{self.elasticsearch_host}:{self.elasticsearch_port}"
