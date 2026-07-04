@@ -1,16 +1,15 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from typing import List
 from elasticsearch import Elasticsearch
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete
 
 from app.dependencies import get_elasticsearch_client
 from app.database import get_db, Document
-from app.models import DocumentUploadResponse, DocumentInfo
+from app.models import DocumentUploadResponse
 from app.utils.validators import validate_file
 from app.services.document_processor import DocumentProcessor
 from app.services.elasticsearch_service import ElasticsearchService
 from app.services.index_manager import IndexManager
-from app.redis_client import RedisCache
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -38,7 +37,7 @@ async def upload_document(
 
     IndexManager.create_index(es_client)
 
-    es_service = ElasticsearchService(es_client)
+    es_service = ElasticsearchService(es_client, IndexManager.INDEX_NAME)
     indexed_count = es_service.index_chunks(chunks)
 
     doc = Document(
@@ -52,8 +51,6 @@ async def upload_document(
     db.add(doc)
     await db.commit()
 
-    await RedisCache.delete("documents_list")
-
     return DocumentUploadResponse(
         document_id=document_id,
         file_name=file.filename,
@@ -64,37 +61,26 @@ async def upload_document(
     )
 
 
-@router.get("/", response_model=List[DocumentInfo])
+@router.get("/", response_model=list)
 async def get_documents(
-    db: AsyncSession = Depends(get_db),
-    es_client: Elasticsearch = Depends(get_elasticsearch_client)
+    db: AsyncSession = Depends(get_db)
 ):
-    cache_key = "documents_list"
-    cached = await RedisCache.get(cache_key)
-    if cached:
-        return cached
-
-    from sqlalchemy import select
     result = await db.execute(
         select(Document).order_by(Document.uploaded_at.desc())
     )
     documents = result.scalars().all()
 
-    response = [
-        DocumentInfo(
-            document_id=doc.id,
-            file_name=doc.file_name,
-            uploaded_at=doc.uploaded_at,
-            chunks_count=doc.chunks_count,
-            file_size=doc.file_size,
-            status=doc.status
-        )
+    return [
+        {
+            "document_id": doc.id,
+            "file_name": doc.file_name,
+            "uploaded_at": doc.uploaded_at,
+            "chunks_count": doc.chunks_count,
+            "file_size": doc.file_size,
+            "status": doc.status
+        }
         for doc in documents
     ]
-
-    await RedisCache.set(cache_key, [r.model_dump() for r in response])
-
-    return response
 
 
 @router.delete("/{document_id}")
@@ -103,15 +89,12 @@ async def delete_document(
     es_client: Elasticsearch = Depends(get_elasticsearch_client),
     db: AsyncSession = Depends(get_db)
 ):
-    es_service = ElasticsearchService(es_client)
+    es_service = ElasticsearchService(es_client, IndexManager.INDEX_NAME)
     es_service.delete_document(document_id)
 
-    from sqlalchemy import delete
     await db.execute(
         delete(Document).where(Document.id == document_id)
     )
     await db.commit()
-
-    await RedisCache.delete("documents_list")
 
     return {"status": "deleted", "document_id": document_id}

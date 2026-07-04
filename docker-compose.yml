@@ -119,6 +119,18 @@ services:
     networks:
       - search-network
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: search-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - search-network
+
 volumes:
   postgres_data:
   elasticsearch_data:

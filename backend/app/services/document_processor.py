@@ -12,9 +12,12 @@ class DocumentProcessor:
     def extract_text_from_pdf(file_content: bytes) -> List[Tuple[int, str]]:
         try:
             with pdfplumber.open(io.BytesIO(file_content)) as pdf:
-                return [(page_num, page.extract_text() or "")
-                        for page_num, page in enumerate(pdf.pages, start=1)
-                        if (page.extract_text() or "").strip()]
+                pages = []
+                for page_num, page in enumerate(pdf.pages, start=1):
+                    text = page.extract_text() or ""
+                    if text.strip():
+                        pages.append((page_num, text))
+                return pages
         except Exception as e:
             raise ValueError(f"Ошибка парсинга PDF: {str(e)}")
 
@@ -22,8 +25,8 @@ class DocumentProcessor:
     def extract_text_from_docx(file_content: bytes) -> List[Tuple[int, str]]:
         try:
             doc = Document(io.BytesIO(file_content))
-            text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
-            return [(1, text)] if text.strip() else []
+            full_text = "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+            return [(1, full_text)] if full_text.strip() else []
         except Exception as e:
             raise ValueError(f"Ошибка парсинга DOCX: {str(e)}")
 
@@ -50,7 +53,7 @@ class DocumentProcessor:
         return [chunk for chunk in chunks if chunk]
 
     @staticmethod
-    def process_and_chunk(file: UploadFile) -> tuple[str, List[dict]]:
+    def process_and_chunk(file: UploadFile) -> tuple:
         content = file.file.read()
         file.file.seek(0)
 
@@ -65,18 +68,19 @@ class DocumentProcessor:
 
         document_id = str(uuid.uuid4())
         all_chunks = []
-        chunk_counter = 0
 
         for page_num, page_text in pages:
             for chunk_text in DocumentProcessor.chunk_text(page_text):
+                chunk_id = str(uuid.uuid4())
                 all_chunks.append({
-                    "chunk_id": f"{document_id}_{chunk_counter}",
+                    "chunk_id": chunk_id,
                     "document_id": document_id,
                     "file_name": file.filename,
                     "page_number": page_num,
                     "text": chunk_text,
-                    "chunk_index": chunk_counter,
+                    "chunk_index": len(all_chunks),
                 })
-                chunk_counter += 1
+
+        print(f"{file.filename} → ID: {document_id}, чанков: {len(all_chunks)}")
 
         return ext, all_chunks

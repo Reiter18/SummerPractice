@@ -5,7 +5,6 @@ from app.config import settings
 
 
 class RedisCache:
-
     _client: Optional[redis.Redis] = None
 
     @classmethod
@@ -38,9 +37,27 @@ class RedisCache:
         await client.delete(key)
 
     @classmethod
-    async def clear(cls) -> None:
+    async def clear_search_cache(cls) -> None:
+        client = await cls.get_client()
+        cursor = 0
+        deleted_count = 0
+
+        while True:
+            cursor, keys = await client.scan(cursor, match="search:*", count=100)
+            if keys:
+                await client.delete(*keys)
+                deleted_count += len(keys)
+            if cursor == 0:
+                break
+
+        print(f"Очищено {deleted_count} поисковых кешей")
+        return deleted_count
+
+    @classmethod
+    async def clear_all(cls) -> None:
         client = await cls.get_client()
         await client.flushdb()
+        print("Весь кеш Redis очищен")
 
 
 async def get_redis() -> redis.Redis:

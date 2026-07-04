@@ -1,17 +1,14 @@
-from elasticsearch import Elasticsearch, exceptions
+from elasticsearch import Elasticsearch
 from typing import List, Dict, Any
 from datetime import datetime
-from app.services.index_manager import IndexManager
 
 
 class ElasticsearchService:
-
-    def __init__(self, es_client: Elasticsearch):
+    def __init__(self, es_client: Elasticsearch, index_name: str = "documents"):
         self.client = es_client
-        self.index_name = IndexManager.INDEX_NAME
+        self.index_name = index_name
 
     def index_chunks(self, chunks: List[Dict[str, Any]]) -> int:
-
         if not chunks:
             return 0
 
@@ -35,13 +32,12 @@ class ElasticsearchService:
                 )
                 indexed_count += 1
             except Exception as e:
-                print(f"Ошибка индексации чанка {chunk['chunk_id']}: {e}")
+                print(f"Ошибка индексации: {e}")
 
         self.client.indices.refresh(index=self.index_name)
         return indexed_count
 
     def search(self, query: str, size: int = 10, from_: int = 0) -> Dict[str, Any]:
-
         if not query or not query.strip():
             return {"total": 0, "results": []}
 
@@ -51,19 +47,12 @@ class ElasticsearchService:
                     "query": query.strip(),
                     "fields": ["text^2", "file_name"],
                     "type": "best_fields",
+                    "analyzer": "russian_analyzer",
                     "fuzziness": "AUTO"
                 }
             },
             "from": from_,
-            "size": size,
-            "highlight": {
-                "fields": {
-                    "text": {
-                        "fragment_size": 200,
-                        "number_of_fragments": 1
-                    }
-                }
-            }
+            "size": size
         }
 
         try:
@@ -77,36 +66,20 @@ class ElasticsearchService:
 
             for hit in response["hits"]["hits"]:
                 source = hit["_source"]
-                highlight_text = source["text"]
-                if "highlight" in hit and "text" in hit["highlight"]:
-                    highlight_text = " ... ".join(hit["highlight"]["text"])
-
                 results.append({
                     "chunk_id": source["chunk_id"],
                     "document_id": source["document_id"],
                     "file_name": source["file_name"],
                     "page": source["page_number"],
-                    "text": highlight_text,
+                    "text": source["text"],
                     "score": hit["_score"] or 0.0
                 })
 
             return {"total": total, "results": results}
 
-        except exceptions.NotFoundError:
-            return {"total": 0, "results": []}
         except Exception as e:
             print(f"Ошибка поиска: {e}")
             return {"total": 0, "results": []}
-
-    def get_document_chunks(self, document_id: str) -> int:
-        try:
-            response = self.client.count(
-                index=self.index_name,
-                body={"query": {"term": {"document_id": document_id}}}
-            )
-            return response["count"]
-        except:
-            return 0
 
     def delete_document(self, document_id: str) -> bool:
         try:
@@ -117,5 +90,5 @@ class ElasticsearchService:
             self.client.indices.refresh(index=self.index_name)
             return True
         except Exception as e:
-            print(f"Ошибка удаления документа {document_id}: {e}")
+            print(f"Ошибка удаления: {e}")
             return False

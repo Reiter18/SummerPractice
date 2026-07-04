@@ -2,7 +2,6 @@ from fastapi import APIRouter, Query, Depends
 from elasticsearch import Elasticsearch
 import time
 import hashlib
-import json
 
 from app.dependencies import get_elasticsearch_client
 from app.models import SearchResponse, SearchResultItem
@@ -23,6 +22,7 @@ async def search(
         es_client: Elasticsearch = Depends(get_elasticsearch_client),
         db: AsyncSession = Depends(get_db)
 ):
+
     start_time = time.time()
 
     query_str = f"{q}:{size}:{page}"
@@ -30,8 +30,9 @@ async def search(
 
     cached = await RedisCache.get(cache_key)
     if cached:
-        await log_search(db, q, len(cached["results"]), 0)
-        return SearchResponse(**cached, from_cache=True)
+        cached.pop('from_cache', None)
+        cached['from_cache'] = True
+        return SearchResponse(**cached)
 
     if not es_client.indices.exists(index=IndexManager.INDEX_NAME):
         return SearchResponse(query=q, total=0, results=[], from_cache=False)

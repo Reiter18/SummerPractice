@@ -1,9 +1,7 @@
 from elasticsearch import Elasticsearch
-from app.config import settings
 
 
 class IndexManager:
-
     INDEX_NAME = "documents"
 
     @staticmethod
@@ -34,7 +32,13 @@ class IndexManager:
                 "properties": {
                     "chunk_id": {"type": "keyword"},
                     "document_id": {"type": "keyword"},
-                    "file_name": {"type": "text"},
+                    "file_name": {
+                        "type": "text",
+                        "analyzer": "russian_analyzer",
+                        "fields": {
+                            "keyword": {"type": "keyword", "ignore_above": 256}
+                        }
+                    },
                     "page_number": {"type": "integer"},
                     "text": {
                         "type": "text",
@@ -54,25 +58,14 @@ class IndexManager:
         try:
             if es_client.indices.exists(index=cls.INDEX_NAME):
                 es_client.indices.delete(index=cls.INDEX_NAME)
-                print(f"Старый индекс {cls.INDEX_NAME} удален")
+                print(f"Старый индекс удален")
 
             es_client.indices.create(
                 index=cls.INDEX_NAME,
                 body=cls.get_index_mapping()
             )
-            print(f"Индекс {cls.INDEX_NAME} успешно создан")
+            print(f"Индекс создан")
             return True
         except Exception as e:
-            print(f"Ошибка создания индекса: {e}")
-            return False
-
-    @classmethod
-    def delete_index(cls, es_client: Elasticsearch) -> bool:
-        try:
-            if es_client.indices.exists(index=cls.INDEX_NAME):
-                es_client.indices.delete(index=cls.INDEX_NAME)
-                print(f"Индекс {cls.INDEX_NAME} удален")
-            return True
-        except Exception as e:
-            print(f"Ошибка удаления индекса: {e}")
+            print(f"Ошибка: {e}")
             return False
