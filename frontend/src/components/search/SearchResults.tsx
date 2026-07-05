@@ -23,7 +23,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
 }) => {
   const [showAll, setShowAll] = useState(false)
 
-  if (loading) {
+  if (loading && results.length === 0) {
     return (
       <div className="text-center py-12 text-gray-500">
         Поиск...
@@ -44,8 +44,11 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
     )
   }
 
-  const displayResults = showAll ? results : results.slice(0, pageSize)
-  const hasMoreResults = results.length > pageSize && !showAll
+  const isExternalPagination = Boolean(onLoadMore)
+  const displayResults = isExternalPagination
+    ? results
+    : (showAll ? results : results.slice(0, pageSize))
+  const hasMoreResults = !isExternalPagination && results.length > pageSize && !showAll
 
   return (
     <div className="space-y-6">
@@ -55,7 +58,9 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
           {results.length < total && ` (показано ${results.length})`}
         </p>
         <p className="text-xs text-gray-400">
-          {showAll ? 'Показаны все результаты' : `Показаны первые ${Math.min(pageSize, results.length)}`}
+          {isExternalPagination || showAll
+            ? `Показано ${results.length} из ${total}`
+            : `Показаны первые ${Math.min(pageSize, results.length)}`}
         </p>
       </div>
 
