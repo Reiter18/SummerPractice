@@ -118,20 +118,7 @@ Elasticsearch, Redis и PostgreSQL замокированы через `unittest
 
 ---
 
-## 4. Покрытие по требованиям задания
-
-| ID    | Требование                                                 | Тест                                                                       |
-|-------|------------------------------------------------------------|----------------------------------------------------------------------------|
-| BE-02 | Валидация формата (PDF, DOCX) и размера (≤20 МБ), HTTP 400 | `test_validators`, `test_upload_invalid_extension_*`                       |
-| BE-03 | Генерация UUID для каждого документа                       | `test_upload_document_id_is_uuid_format`                                   |
-| BE-08 | `GET /api/v1/search` с Elasticsearch multi-match           | `test_search_success`, `test_search_no_results`                            |
-| BE-09 | JSON-ответ: `chunk_id`, `filename`, `page`, `text`, `score`| `test_search_success`, `test_search_uses_highlight_text`                   |
-| BE-10 | Redis-кеш с TTL для поискового запроса                     | `test_search_returns_cached_result`                                        |
-| —     | Пагинация: параметры `size` и `page` с граничными значениями | `test_search_pagination`, `test_search_size_exceeds_max`, `test_search_page_less_than_one` |
-
----
-
-## 7. Выводы
+## 4. Выводы
 
 - **26 из 26 тестов** пройдены успешно — 100% прохождение.
 - Дефект **BUG-001** выявлен, задокументирован и исправлен.
