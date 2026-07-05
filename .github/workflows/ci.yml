@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - feature
+      - cicd
 
   pull_request:
     branches:
@@ -16,10 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -34,12 +35,35 @@ jobs:
           cd backend
           ruff check .
 
-  docker-validate:
+  unit-tests:
     needs: linter
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+      
+      - name: Install python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+        
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt 
+          pip install pytest
+      
+      - name: Run unit tests
+        run: |
+          cd backend
+          pytest tests/test_validators.py tests/test_health.py tests/test_upload.py -v
+
+  docker-validate:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
       - name: Validate Docker Compose
         run: docker compose config
