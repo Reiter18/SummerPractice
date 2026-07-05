@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict
 from jose import jwt
 from passlib.context import CryptContext
-from pydantic import BaseModel
 
 from app.config import settings
 from app.models import UserResponse
