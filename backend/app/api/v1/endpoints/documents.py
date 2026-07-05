@@ -10,6 +10,7 @@ from app.utils.validators import validate_file
 from app.services.document_processor import DocumentProcessor
 from app.services.elasticsearch_service import ElasticsearchService
 from app.services.index_manager import IndexManager
+from app.redis_client import RedisCache
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -35,8 +36,6 @@ async def upload_document(
 
     document_id = chunks[0]["document_id"]
 
-    IndexManager.create_index(es_client)
-
     es_service = ElasticsearchService(es_client, IndexManager.INDEX_NAME)
     indexed_count = es_service.index_chunks(chunks)
 
@@ -50,6 +49,9 @@ async def upload_document(
     )
     db.add(doc)
     await db.commit()
+
+    if indexed_count > 0:
+        await RedisCache.clear_search_cache()
 
     return DocumentUploadResponse(
         document_id=document_id,
@@ -96,5 +98,7 @@ async def delete_document(
         delete(Document).where(Document.id == document_id)
     )
     await db.commit()
+
+    await RedisCache.clear_search_cache()
 
     return {"status": "deleted", "document_id": document_id}

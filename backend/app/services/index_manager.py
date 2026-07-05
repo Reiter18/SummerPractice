@@ -57,8 +57,8 @@ class IndexManager:
     def create_index(cls, es_client: Elasticsearch) -> bool:
         try:
             if es_client.indices.exists(index=cls.INDEX_NAME):
-                es_client.indices.delete(index=cls.INDEX_NAME)
-                print("Старый индекс удален")
+                print("Индекс уже существует, пропускаем создание")
+                return True
 
             es_client.indices.create(
                 index=cls.INDEX_NAME,
