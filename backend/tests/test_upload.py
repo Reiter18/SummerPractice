@@ -133,7 +133,6 @@ async def test_upload_wrong_format_from_fixture(client):
 @pytest.mark.anyio
 async def test_upload_empty_pdf_from_fixture(client):
     """Пустой PDF из fixtures — должен вернуть 400 (нет текста)."""
-    fake_doc_id = str(uuid.uuid4())
     fixture_path = os.path.join(FIXTURES_DIR, "empty.pdf")
 
     app.dependency_overrides[get_db] = get_mock_db_override()

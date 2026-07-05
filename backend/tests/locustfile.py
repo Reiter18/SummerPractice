@@ -11,7 +11,7 @@
 """
 
 import os
-from locust import HttpUser, task, between, constant_pacing
+from locust import HttpUser, task, between
 
 
 FIXTURES_DIR = os.path.join(os.path.dirname(__file__), "fixtures")
