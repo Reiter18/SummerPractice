@@ -269,22 +269,30 @@ async def test_search_no_results(override_db):
 @pytest.mark.asyncio
 async def test_search_uses_highlight_text(override_db):
     highlight_text = "...Python является <em>языком</em> программирования..."
-    hit = make_hit(
-        chunk_id="chunk-hl",
-        document_id="doc-hl",
-        file_name="hl.pdf",
-        page_number=3,
-        text="Оригинальный текст без подсветки",
-        highlight=[highlight_text],
-    )
-    es_mock = make_es_client_mock(
-        index_exists=True,
-        search_result=make_es_response([hit], total=1),
-    )
+
+    es_mock = make_es_client_mock(index_exists=True)
     app.dependency_overrides[get_elasticsearch_client] = lambda: es_mock
 
+    mock_result = {
+        "total": 1,
+        "results": [
+            {
+                "chunk_id": "chunk-hl",
+                "document_id": "doc-hl",
+                "file_name": "hl.pdf",
+                "page": 3,
+                "text": highlight_text,
+                "score": 1.5,
+            }
+        ],
+    }
+
     with patch("app.redis_client.RedisCache.get", new=AsyncMock(return_value=None)), \
-         patch("app.redis_client.RedisCache.set", new=AsyncMock()):
+         patch("app.redis_client.RedisCache.set", new=AsyncMock()), \
+         patch(
+             "app.services.elasticsearch_service.ElasticsearchService.search",
+             return_value=mock_result,
+         ):
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
