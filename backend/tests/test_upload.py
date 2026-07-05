@@ -38,29 +38,25 @@ def get_mock_db_override():
 
 @pytest.mark.anyio
 async def test_upload_valid_pdf(client):
-    """Успешная загрузка PDF — статус 200, document_id в формате UUID."""
     fake_doc_id = str(uuid.uuid4())
-
     app.dependency_overrides[get_db] = get_mock_db_override()
-
     try:
         with patch("app.api.v1.endpoints.documents.DocumentProcessor.process_and_chunk",
                    return_value=(".pdf", make_fake_chunks(fake_doc_id))), \
              patch("app.api.v1.endpoints.documents.IndexManager.create_index",
                    return_value=None), \
+             patch("app.redis_client.RedisCache.clear_search_cache",  # ← добавить
+                   new=AsyncMock(return_value=None)), \
              patch("app.api.v1.endpoints.documents.ElasticsearchService") as mock_es_cls:
-
             mock_es_instance = MagicMock()
             mock_es_instance.index_chunks.return_value = 1
             mock_es_cls.return_value = mock_es_instance
-
             response = await client.post(
                 "/api/v1/documents/upload",
                 files={"file": ("test.pdf", io.BytesIO(b"%PDF-1.4 fake"), "application/pdf")},
             )
     finally:
         app.dependency_overrides.pop(get_db, None)
-
     assert response.status_code == 200
     data = response.json()
     assert "document_id" in data
@@ -90,29 +86,25 @@ async def test_upload_invalid_extension_jpg(client):
 
 @pytest.mark.anyio
 async def test_upload_document_id_is_uuid_format(client):
-    """document_id должен быть валидным UUID."""
     fake_doc_id = str(uuid.uuid4())
-
     app.dependency_overrides[get_db] = get_mock_db_override()
-
     try:
         with patch("app.api.v1.endpoints.documents.DocumentProcessor.process_and_chunk",
                    return_value=(".pdf", make_fake_chunks(fake_doc_id))), \
              patch("app.api.v1.endpoints.documents.IndexManager.create_index",
                    return_value=None), \
+             patch("app.redis_client.RedisCache.clear_search_cache",  # ← добавить
+                   new=AsyncMock(return_value=None)), \
              patch("app.api.v1.endpoints.documents.ElasticsearchService") as mock_es_cls:
-
             mock_es_instance = MagicMock()
             mock_es_instance.index_chunks.return_value = 1
             mock_es_cls.return_value = mock_es_instance
-
             response = await client.post(
                 "/api/v1/documents/upload",
                 files={"file": ("test.pdf", io.BytesIO(b"%PDF-1.4 test"), "application/pdf")},
             )
     finally:
         app.dependency_overrides.pop(get_db, None)
-
     assert response.status_code == 200
     doc_id = response.json()["document_id"]
     try:
