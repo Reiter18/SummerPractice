@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from prometheus_fastapi_instrumentator import Instrumentator
+import traceback
 
 from app.api.v1.router import router
 from app.config import settings

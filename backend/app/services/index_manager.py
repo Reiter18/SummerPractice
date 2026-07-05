@@ -58,13 +58,13 @@ class IndexManager:
         try:
             if es_client.indices.exists(index=cls.INDEX_NAME):
                 es_client.indices.delete(index=cls.INDEX_NAME)
-                print(f"Старый индекс удален")
+                print("Старый индекс удален")
 
             es_client.indices.create(
                 index=cls.INDEX_NAME,
                 body=cls.get_index_mapping()
             )
-            print(f"Индекс создан")
+            print("Индекс создан")
             return True
         except Exception as e:
             print(f"Ошибка: {e}")
