@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature
+      - cicd
+
+  pull_request:
+    branches:
+      - main
+      - feature
+
+jobs:
+  linter:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install ruff
+
+      - name: Run Ruff
+        run: |
+          cd backend
+          ruff check .
+
+  unit-tests:
+    needs: linter
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      
+      - name: Install python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+        
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt 
+          pip install pytest
+      
+      - name: Run unit tests
+        run: |
+          cd backend
+          pytest tests/test_validators.py tests/test_health.py tests/test_upload.py -v
+
+  docker-validate:
+    needs: unit-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Validate Docker Compose
+        run: docker compose config
+
+      - name: Build backend image
+        run: docker build ./backend
+
+      - name: Build frontend image
+        run: docker build ./frontend
+
