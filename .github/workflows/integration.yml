@@ -51,4 +51,4 @@ jobs:
           pytest tests/test_precision3.py -v -s
       - name: Shutdown
         if: always()
-        run: docker compose down 
+        run: docker compose down
