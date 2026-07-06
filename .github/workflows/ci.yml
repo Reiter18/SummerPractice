@@ -36,6 +36,7 @@ jobs:
           ruff check .
 
   unit-tests:
+    needs: linter
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

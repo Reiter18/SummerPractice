@@ -1,0 +1,53 @@
+name: Integration tests
+
+on:
+  workflow_run:
+    workflows: [ "CI" ]
+    types:
+      - completed
+    branches:
+      - main
+      - cicd
+  
+jobs:
+  integration:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build containers
+        run: docker compose up -d --build
+
+      - name: Wait for backend
+        run: |
+          for i in {1..30}; do
+            if curl -f http://localhost:8000/api/v1/health/; then
+              echo "Backend is ready"
+              exit 0
+            fi
+            echo "Waiting for backend..."
+            sleep 5
+          done
+
+          echo "Backend failed to start"
+          exit 1
+      
+      - name: Install python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install pytest
+      
+      - name: Precision@3
+        run: |
+          cd backend
+          pytest tests/test_precision3.py -v -s
+      - name: Shutdown
+        if: always()
+        run: docker compose down 
